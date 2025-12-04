@@ -1,20 +1,22 @@
 package com.techlab.app;
 
 import com.techlab.productos.Producto;
-import com.techlab.pedidos.*;
+import com.techlab.pedidos.LineaPedido;
+import com.techlab.pedidos.Pedido;
 import com.techlab.excepciones.StockInsuficienteException;
 import java.util.*;
 
 public class Main {
-    private static Scanner scanner = new Scanner(System.in);
-    private static List<Producto> productos = new ArrayList<>();
-    private static List<Pedido> pedidos = new ArrayList<>();
+
+    private static final Scanner scanner = new Scanner(System.in);
+    private static final List<Producto> productos = new ArrayList<>();
+    private static final List<Pedido> pedidos = new ArrayList<>();
 
     public static void main(String[] args) {
         int opcion;
         do {
             mostrarMenu();
-            opcion = leerEntero("Elija una opción: ");
+            opcion = leerEntero("Seleccione una opción: ");
             switch (opcion) {
                 case 1 -> agregarProducto();
                 case 2 -> listarProductos();
@@ -22,7 +24,7 @@ public class Main {
                 case 4 -> eliminarProducto();
                 case 5 -> crearPedido();
                 case 6 -> listarPedidos();
-                case 7 -> System.out.println("¡Gracias por usar el sistema!");
+                case 7 -> System.out.println("Sistema finalizado. Proyecto desarrollado por Adriana Serrano.");
                 default -> System.out.println("Opción inválida.");
             }
         } while (opcion != 7);
@@ -30,99 +32,156 @@ public class Main {
 
     private static void mostrarMenu() {
         System.out.println("""
-                =================================== SISTEMA DE GESTIÓN - TECHLAB ==================================
-                1) Agregar producto
-                2) Listar productos
-                3) Buscar/Actualizar producto
-                4) Eliminar producto
-                5) Crear un pedido
-                6) Listar pedidos
-                7) Salir
-                ===============================================================================================
-                """);
+                
+        =================================== SISTEMA DE GESTIÓN - TECHLAB ===================================
+                                   Proyecto Final - Desarrollo por Adriana Serrano
+        =====================================================================================================
+
+        1) Agregar producto
+        2) Listar productos
+        3) Buscar / Actualizar producto
+        4) Eliminar producto
+        5) Crear pedido
+        6) Listar pedidos
+        7) Salir
+
+        =====================================================================================================
+        """);
     }
 
     private static void agregarProducto() {
-        System.out.print("Nombre: ");
-        String nombre = scanner.nextLine();
+        System.out.print("Nombre del producto: ");
+        String nombre = scanner.nextLine().trim();
+
+        if (nombre.isEmpty()) {
+            System.out.println("El nombre no puede estar vacío.");
+            return;
+        }
+
         double precio = leerDouble("Precio: ");
         int stock = leerEntero("Stock: ");
+
         productos.add(new Producto(nombre, precio, stock));
         System.out.println("Producto agregado exitosamente.");
     }
 
     private static void listarProductos() {
-        if (productos.isEmpty()) System.out.println("No hay productos cargados.");
-        else productos.forEach(System.out::println);
+        if (productos.isEmpty()) {
+            System.out.println("No hay productos cargados.");
+            return;
+        }
+
+        System.out.println("=== LISTA DE PRODUCTOS ===");
+        productos.forEach(System.out::println);
     }
 
     private static void buscarActualizarProducto() {
-        int id = leerEntero("Ingrese el ID del producto a buscar: ");
-        Producto p = productos.stream().filter(prod -> prod.getId() == id).findFirst().orElse(null);
+        int id = leerEntero("Ingrese el ID del producto: ");
+
+        Producto p = productos.stream()
+                .filter(prod -> prod.getId() == id)
+                .findFirst()
+                .orElse(null);
+
         if (p == null) {
             System.out.println("Producto no encontrado.");
             return;
         }
-        System.out.println(p);
-        System.out.println("¿Desea actualizar el precio o el stock? (p/s/n)");
-        String opcion = scanner.nextLine().toLowerCase();
-        if (opcion.equals("p")) {
-            double nuevoPrecio = leerDouble("Nuevo precio: ");
-            p.setPrecio(nuevoPrecio);
-        } else if (opcion.equals("s")) {
-            int nuevoStock = leerEntero("Nuevo stock: ");
-            p.setStock(nuevoStock);
+
+        System.out.println("Producto encontrado: " + p);
+        System.out.println("Actualizar (p) precio | (s) stock | (n) nada");
+        String op = scanner.nextLine().toLowerCase();
+
+        switch (op) {
+            case "p" -> p.setPrecio(leerDouble("Nuevo precio: "));
+            case "s" -> p.setStock(leerEntero("Nuevo stock: "));
+            case "n" -> {
+                System.out.println("No se realizaron cambios.");
+                return;
+            }
+            default -> {
+                System.out.println("Opción inválida.");
+                return;
+            }
         }
-        System.out.println("Producto actualizado.");
+
+        System.out.println("Producto actualizado correctamente.");
     }
 
     private static void eliminarProducto() {
-        int id = leerEntero("Ingrese ID del producto a eliminar: ");
-        productos.removeIf(p -> p.getId() == id);
-        System.out.println("Producto eliminado (si existía).");
+        int id = leerEntero("ID del producto a eliminar: ");
+
+        boolean eliminado = productos.removeIf(p -> p.getId() == id);
+
+        if (eliminado) {
+            System.out.println("Producto eliminado.");
+        } else {
+            System.out.println("No se encontró ningún producto con ese ID.");
+        }
     }
 
     private static void crearPedido() {
+        if (productos.isEmpty()) {
+            System.out.println("No hay productos para crear un pedido.");
+            return;
+        }
+
         Pedido pedido = new Pedido();
+
         while (true) {
             listarProductos();
-            int id = leerEntero("Ingrese ID del producto a agregar (0 para finalizar): ");
+
+            int id = leerEntero("Ingrese ID de producto (0 para finalizar): ");
+
             if (id == 0) break;
 
-            Producto p = productos.stream().filter(prod -> prod.getId() == id).findFirst().orElse(null);
+            Producto p = productos.stream()
+                    .filter(prod -> prod.getId() == id)
+                    .findFirst()
+                    .orElse(null);
+
             if (p == null) {
                 System.out.println("Producto no encontrado.");
                 continue;
             }
 
             int cantidad = leerEntero("Cantidad: ");
+
             try {
                 if (cantidad > p.getStock()) {
-                    throw new StockInsuficienteException("Stock insuficiente.");
+                    throw new StockInsuficienteException("Error: stock insuficiente.");
                 }
+
                 p.setStock(p.getStock() - cantidad);
                 pedido.agregarLinea(new LineaPedido(p, cantidad));
+
             } catch (StockInsuficienteException e) {
                 System.out.println(e.getMessage());
             }
         }
+
         pedidos.add(pedido);
-        System.out.println("Pedido creado exitosamente:");
+        System.out.println("Pedido creado exitosamente.");
         System.out.println(pedido);
     }
 
     private static void listarPedidos() {
-        if (pedidos.isEmpty()) System.out.println("No hay pedidos registrados.");
-        else pedidos.forEach(System.out::println);
+        if (pedidos.isEmpty()) {
+            System.out.println("No hay pedidos registrados.");
+            return;
+        }
+
+        System.out.println("=== LISTA DE PEDIDOS ===");
+        pedidos.forEach(System.out::println);
     }
 
     private static int leerEntero(String mensaje) {
         while (true) {
             try {
                 System.out.print(mensaje);
-                return Integer.parseInt(scanner.nextLine());
+                return Integer.parseInt(scanner.nextLine().trim());
             } catch (NumberFormatException e) {
-                System.out.println("Ingrese un número válido.");
+                System.out.println("Debe ingresar un número entero válido.");
             }
         }
     }
@@ -131,9 +190,9 @@ public class Main {
         while (true) {
             try {
                 System.out.print(mensaje);
-                return Double.parseDouble(scanner.nextLine());
+                return Double.parseDouble(scanner.nextLine().trim());
             } catch (NumberFormatException e) {
-                System.out.println("Ingrese un número válido.");
+                System.out.println("Debe ingresar un número decimal válido.");
             }
         }
     }
