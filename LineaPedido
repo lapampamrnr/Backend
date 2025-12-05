@@ -39,7 +39,8 @@ public class LineaPedido {
 
     @Override
     public String toString() {
-        return producto.getNombre() + " x" + cantidad + " = $" 
-               + String.format("%.2f", calcularSubtotal());
+        return "Producto: " + producto.getNombre() +
+               " | Cantidad: " + cantidad +
+               " | Subtotal: $" + String.format("%.2f", calcularSubtotal());
     }
 }
