@@ -1,0 +1,12 @@
+# IntelliJ / Eclipse / NetBeans
+/.idea
+/.vscode
+/target
+/build
+*.class
+
+# Sistema operativo
+.DS_Store
+
+# Java
+*.log
