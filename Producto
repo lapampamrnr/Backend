@@ -1,29 +1,97 @@
 package com.techlab.productos;
 
+
 public class Producto {
+
     private static int contador = 0;
-    private int id;
+
+    private final int id;          // ID inmutable
     private String nombre;
     private double precio;
     private int stock;
 
+    // ---------------- CONSTRUCTOR ----------------
+
     public Producto(String nombre, double precio, int stock) {
+        validarNombre(nombre);
+        validarPrecio(precio);
+        validarStock(stock);
+
         this.id = ++contador;
-        this.nombre = nombre;
+        this.nombre = nombre.trim();
         this.precio = precio;
         this.stock = stock;
     }
+
+    // ---------------- GETTERS ----------------
 
     public int getId() { return id; }
     public String getNombre() { return nombre; }
     public double getPrecio() { return precio; }
     public int getStock() { return stock; }
 
-    public void setPrecio(double precio) { this.precio = precio; }
-    public void setStock(int stock) { this.stock = stock; }
+    // ---------------- SETTERS SEGUROS ----------------
+
+    public void setNombre(String nombre) {
+        validarNombre(nombre);
+        this.nombre = nombre.trim();
+    }
+
+    public void setPrecio(double precio) {
+        validarPrecio(precio);
+        this.precio = precio;
+    }
+
+    public void setStock(int stock) {
+        validarStock(stock);
+        this.stock = stock;
+    }
+
+    // ---------------- MÉTODOS UTILITARIOS ----------------
+
+    /** Descuenta stock al registrar una compra */
+    public boolean descontarStock(int cantidad) {
+        if (cantidad <= 0 || cantidad > stock) {
+            return false;
+        }
+        stock -= cantidad;
+        return true;
+    }
+
+    /** Repone stock de manera segura */
+    public void reponerStock(int cantidad) {
+        if (cantidad > 0) {
+            stock += cantidad;
+        }
+    }
+
+    // ---------------- VALIDACIONES ----------------
+
+    private void validarNombre(String nombre) {
+        if (nombre == null || nombre.trim().isEmpty()) {
+            throw new IllegalArgumentException("El nombre del producto no puede estar vacío.");
+        }
+    }
+
+    private void validarPrecio(double precio) {
+        if (precio <= 0) {
+            throw new IllegalArgumentException("El precio debe ser mayor a 0.");
+        }
+    }
+
+    private void validarStock(int stock) {
+        if (stock < 0) {
+            throw new IllegalArgumentException("El stock no puede ser negativo.");
+        }
+    }
+
+    // ---------------- TO STRING PROFESIONAL ----------------
 
     @Override
     public String toString() {
-        return "ID: " + id + " | " + nombre + " | $" + precio + " | Stock: " + stock;
+        return String.format(
+                "Producto { ID: %d | Nombre: %s | Precio: $%.2f | Stock: %d }",
+                id, nombre, precio, stock
+        );
     }
 }
