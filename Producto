@@ -1,97 +1,120 @@
+```java
 package com.techlab.productos;
 
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Producto {
 
-    private static int contador = 0;
+    private static final AtomicInteger CONTADOR = new AtomicInteger(1);
 
-    private final int id;          // ID inmutable
+    private final int id;
     private String nombre;
+    private String descripcion;
     private double precio;
+    private String categoria;
+    private String imagenUrl;
     private int stock;
 
-    // ---------------- CONSTRUCTOR ----------------
-
-    public Producto(String nombre, double precio, int stock) {
-        validarNombre(nombre);
-        validarPrecio(precio);
-        validarStock(stock);
-
-        this.id = ++contador;
-        this.nombre = nombre.trim();
-        this.precio = precio;
-        this.stock = stock;
+    public Producto(String nombre, String descripcion, double precio, String categoria, String imagenUrl, int stock) {
+        setNombre(nombre);
+        setDescripcion(descripcion);
+        setPrecio(precio);
+        setCategoria(categoria);
+        setImagenUrl(imagenUrl);
+        setStock(stock);
+        this.id = CONTADOR.getAndIncrement();
     }
 
-    // ---------------- GETTERS ----------------
+    public int getId() {
+        return id;
+    }
 
-    public int getId() { return id; }
-    public String getNombre() { return nombre; }
-    public double getPrecio() { return precio; }
-    public int getStock() { return stock; }
-
-    // ---------------- SETTERS SEGUROS ----------------
+    public String getNombre() {
+        return nombre;
+    }
 
     public void setNombre(String nombre) {
-        validarNombre(nombre);
+        if (nombre == null || nombre.isBlank()) throw new IllegalArgumentException("Nombre no puede estar vacío.");
         this.nombre = nombre.trim();
+    }
+
+    public String getDescripcion() {
+        return descripcion;
+    }
+
+    public void setDescripcion(String descripcion) {
+        this.descripcion = (descripcion == null) ? "" : descripcion.trim();
+    }
+
+    public double getPrecio() {
+        return precio;
     }
 
     public void setPrecio(double precio) {
-        validarPrecio(precio);
+        if (precio <= 0) throw new IllegalArgumentException("El precio debe ser mayor a cero.");
         this.precio = precio;
     }
 
+    public String getCategoria() {
+        return categoria;
+    }
+
+    public void setCategoria(String categoria) {
+        this.categoria = (categoria == null) ? "" : categoria.trim();
+    }
+
+    public String getImagenUrl() {
+        return imagenUrl;
+    }
+
+    public void setImagenUrl(String imagenUrl) {
+        this.imagenUrl = (imagenUrl == null) ? "" : imagenUrl.trim();
+    }
+
+    public int getStock() {
+        return stock;
+    }
+
     public void setStock(int stock) {
-        validarStock(stock);
+        if (stock < 0) throw new IllegalArgumentException("El stock no puede ser negativo.");
         this.stock = stock;
     }
 
-    // ---------------- MÉTODOS UTILITARIOS ----------------
-
-    /** Descuenta stock al registrar una compra */
-    public boolean descontarStock(int cantidad) {
-        if (cantidad <= 0 || cantidad > stock) {
-            return false;
-        }
-        stock -= cantidad;
-        return true;
+    public void aumentarStock(int cantidad) {
+        if (cantidad <= 0) throw new IllegalArgumentException("La cantidad a aumentar debe ser positiva.");
+        this.stock += cantidad;
     }
 
-    /** Repone stock de manera segura */
-    public void reponerStock(int cantidad) {
-        if (cantidad > 0) {
-            stock += cantidad;
-        }
+    public void disminuirStock(int cantidad) {
+        if (cantidad <= 0) throw new IllegalArgumentException("La cantidad a disminuir debe ser positiva.");
+        if (cantidad > this.stock) throw new IllegalArgumentException("Stock insuficiente.");
+        this.stock -= cantidad;
     }
 
-    // ---------------- VALIDACIONES ----------------
-
-    private void validarNombre(String nombre) {
-        if (nombre == null || nombre.trim().isEmpty()) {
-            throw new IllegalArgumentException("El nombre del producto no puede estar vacío.");
-        }
+    public double calcularPrecioPorCantidad(int cantidad) {
+        if (cantidad <= 0) throw new IllegalArgumentException("La cantidad debe ser mayor a cero.");
+        return precio * cantidad;
     }
-
-    private void validarPrecio(double precio) {
-        if (precio <= 0) {
-            throw new IllegalArgumentException("El precio debe ser mayor a 0.");
-        }
-    }
-
-    private void validarStock(int stock) {
-        if (stock < 0) {
-            throw new IllegalArgumentException("El stock no puede ser negativo.");
-        }
-    }
-
-    // ---------------- TO STRING PROFESIONAL ----------------
 
     @Override
     public String toString() {
-        return String.format(
-                "Producto { ID: %d | Nombre: %s | Precio: $%.2f | Stock: %d }",
-                id, nombre, precio, stock
-        );
+        return String.format("ID:%03d | %-20s | Cat: %-10s | Precio: $%8.2f | Stock: %3d",
+                id, nombre, categoria.isEmpty() ? "N/A" : categoria, precio, stock);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Producto producto = (Producto) o;
+        return id == producto.id;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }
+```
