@@ -1,24 +1,75 @@
 package com.techlab.pedidos;
 
-import com.techlab.productos.Producto;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
-public class LineaPedido {
-    private Producto producto;
-    private int cantidad;
+public class Pedido {
 
-    public LineaPedido(Producto producto, int cantidad) {
-        this.producto = producto;
-        this.cantidad = cantidad;
+    private static int contadorPedidos = 1;
+
+    private final int idPedido;
+    private final LocalDateTime fechaCreacion;
+    private final List<LineaPedido> lineas;
+
+    public Pedido() {
+        this.idPedido = contadorPedidos++;
+        this.fechaCreacion = LocalDateTime.now();
+        this.lineas = new ArrayList<>();
     }
 
-    public Producto getProducto() { return producto; }
-    public int getCantidad() { return cantidad; }
-    public double calcularSubtotal() {
-        return producto.getPrecio() * cantidad;
+    public int getIdPedido() {
+        return idPedido;
+    }
+
+    public LocalDateTime getFechaCreacion() {
+        return fechaCreacion;
+    }
+
+    public List<LineaPedido> getLineas() {
+        return new ArrayList<>(lineas);
+    }
+
+    public void agregarLinea(LineaPedido linea) {
+        if (linea == null) {
+            throw new IllegalArgumentException("La línea de pedido no puede ser nula.");
+        }
+        lineas.add(linea);
+    }
+
+    public double calcularTotal() {
+        return lineas.stream()
+                .mapToDouble(LineaPedido::calcularSubtotal)
+                .sum();
+    }
+
+    private String fechaFormateada() {
+        DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+        return fechaCreacion.format(formato);
     }
 
     @Override
     public String toString() {
-        return producto.getNombre() + " x" + cantidad + " = $" + calcularSubtotal();
+        StringBuilder sb = new StringBuilder();
+        sb.append("\n===================== PEDIDO #")
+          .append(idPedido)
+          .append(" =====================\n");
+        sb.append("Fecha: ").append(fechaFormateada()).append("\n");
+        sb.append("-----------------------------------------------------\n");
+
+        if (lineas.isEmpty()) {
+            sb.append("No hay productos en este pedido.\n");
+        } else {
+            for (LineaPedido lp : lineas) {
+                sb.append(lp.toString()).append("\n");
+            }
+        }
+
+        sb.append("-----------------------------------------------------\n");
+        sb.append("TOTAL: $").append(String.format("%.2f", calcularTotal())).append("\n");
+        sb.append("=====================================================\n");
+
+        return sb.toString();
     }
 }
