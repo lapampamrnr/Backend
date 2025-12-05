@@ -1,26 +1,45 @@
+```java
 package com.techlab.pedidos;
+
+import com.techlab.productos.Producto;
+import com.techlab.excepciones.StockInsuficienteException;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Representa un pedido compuesto por LineaPedido.
+ * Incluye control de stock al agregar líneas y gestión de estados.
+ */
 public class Pedido {
 
-    private static int contadorPedidos = 1;
-
-    private final int idPedido;
-    private final LocalDateTime fechaCreacion;
-    private final List<LineaPedido> lineas;
-
-    public Pedido() {
-        this.idPedido = contadorPedidos++;
-        this.fechaCreacion = LocalDateTime.now();
-        this.lineas = new ArrayList<>();
+    public enum Estado {
+        PENDIENTE,
+        CONFIRMADO,
+        ENVIADO,
+        ENTREGADO,
+        CANCELADO
     }
 
-    public int getIdPedido() {
-        return idPedido;
+    private static final AtomicInteger CONTADOR = new AtomicInteger(1);
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+    private final int id;
+    private final LocalDateTime fechaCreacion;
+    private final List<LineaPedido> lineas;
+    private Estado estado;
+
+    public Pedido() {
+        this.id = CONTADOR.getAndIncrement();
+        this.fechaCreacion = LocalDateTime.now();
+        this.lineas = new ArrayList<>();
+        this.estado = Estado.PENDIENTE;
+    }
+
+    public int getId() {
+        return id;
     }
 
     public LocalDateTime getFechaCreacion() {
@@ -28,14 +47,60 @@ public class Pedido {
     }
 
     public List<LineaPedido> getLineas() {
-        return new ArrayList<>(lineas);
+        return Collections.unmodifiableList(lineas);
     }
 
-    public void agregarLinea(LineaPedido linea) {
-        if (linea == null) {
-            throw new IllegalArgumentException("La línea de pedido no puede ser nula.");
+    public Estado getEstado() {
+        return estado;
+    }
+
+    public void setEstado(Estado nuevoEstado) {
+        if (nuevoEstado == null) throw new IllegalArgumentException("Estado no puede ser nulo.");
+        this.estado = nuevoEstado;
+    }
+
+    /**
+     * Agrega una línea al pedido validando stock del producto.
+     * Si la cantidad solicitada supera el stock disponible, lanza StockInsuficienteException.
+     * No modifica el stock del producto: la confirmación del pedido (confirmarYDescontarStock)
+     * es la que debe efectuar el descuento.
+     */
+    public void agregarLinea(Producto producto, int cantidad) {
+        if (producto == null) throw new IllegalArgumentException("Producto no puede ser nulo.");
+        if (cantidad <= 0) throw new IllegalArgumentException("Cantidad debe ser mayor a cero.");
+        if (cantidad > producto.getStock()) {
+            throw new StockInsuficienteException("Stock insuficiente para " + producto.getNombre());
         }
-        lineas.add(linea);
+
+        // Si ya existe la misma línea (mismo producto), acumulamos cantidad
+        for (LineaPedido lp : lineas) {
+            if (lp.getProducto().getId() == producto.getId()) {
+                lp.setCantidad(lp.getCantidad() + cantidad);
+                return;
+            }
+        }
+        lineas.add(new LineaPedido(producto, cantidad));
+    }
+
+    /**
+     * Confirma el pedido y descuenta stock de cada producto.
+     * Cambia el estado a CONFIRMADO.
+     */
+    public void confirmarYDescontarStock() {
+        if (lineas.isEmpty()) throw new IllegalStateException("No hay líneas en el pedido.");
+        if (estado == Estado.CANCELADO) throw new IllegalStateException("Pedido cancelado.");
+        // Validar stock antes de descontar
+        for (LineaPedido lp : lineas) {
+            Producto p = lp.getProducto();
+            if (lp.getCantidad() > p.getStock()) {
+                throw new StockInsuficienteException("Stock insuficiente para " + p.getNombre());
+            }
+        }
+        // Descontar stock
+        for (LineaPedido lp : lineas) {
+            lp.getProducto().disminuirStock(lp.getCantidad());
+        }
+        this.estado = Estado.CONFIRMADO;
     }
 
     public double calcularTotal() {
@@ -44,20 +109,27 @@ public class Pedido {
                 .sum();
     }
 
+    public int totalItems() {
+        return lineas.stream().mapToInt(LineaPedido::getCantidad).sum();
+    }
+
+    public void cancelar() {
+        if (estado == Estado.ENTREGADO) {
+            throw new IllegalStateException("No se puede cancelar un pedido ya entregado.");
+        }
+        this.estado = Estado.CANCELADO;
+    }
+
     private String fechaFormateada() {
-        DateTimeFormatter formato = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-        return fechaCreacion.format(formato);
+        return fechaCreacion.format(FORMATO_FECHA);
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("\n===================== PEDIDO #")
-          .append(idPedido)
-          .append(" =====================\n");
-        sb.append("Fecha: ").append(fechaFormateada()).append("\n");
+        sb.append("\n===================== PEDIDO #").append(id).append(" =====================\n");
+        sb.append("Fecha: ").append(fechaFormateada()).append(" | Estado: ").append(estado).append("\n");
         sb.append("-----------------------------------------------------\n");
-
         if (lineas.isEmpty()) {
             sb.append("No hay productos en este pedido.\n");
         } else {
@@ -65,11 +137,10 @@ public class Pedido {
                 sb.append(lp.toString()).append("\n");
             }
         }
-
         sb.append("-----------------------------------------------------\n");
-        sb.append("TOTAL: $").append(String.format("%.2f", calcularTotal())).append("\n");
+        sb.append(String.format("Items: %d | TOTAL: $%.2f\n", totalItems(), calcularTotal()));
         sb.append("=====================================================\n");
-
         return sb.toString();
     }
 }
+```
